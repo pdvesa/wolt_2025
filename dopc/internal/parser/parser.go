@@ -106,14 +106,14 @@ func ParseRequest(request *http.Request, queries *Queries) *ReqError {
 			Message: "Missing mandatory queries",
 		}
 	}
-	// debug
-	for key, values := range queryList {
-		fmt.Println("Key:", key)
-		for _, value := range values {
-			fmt.Println("Value:", value)
+	/*	// debug
+		for key, values := range queryList {
+			fmt.Println("Key:", key)
+			for _, value := range values {
+				fmt.Println("Value:", value)
+			}
 		}
-	}
-	//debug
+		//debug*/
 	queries.VenueSlug = queryList.Get("venue_slug")
 	if queries.VenueSlug == "" {
 		return &ReqError{
