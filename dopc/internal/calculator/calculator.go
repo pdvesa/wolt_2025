@@ -7,11 +7,24 @@ import (
 	"math"
 )
 
-const EarthRadius float64 = 6371.0
+const EarthRadius float64 = 6371000.0
+
+// temp place for structs
+type Delivery struct {
+	Fee      int `json:"fee"`
+	Distance int `json:"distance"`
+}
+
+// Struct for the main data
+type Order struct {
+	TotalPrice          int      `json:"total_price"`
+	SmallOrderSurcharge int      `json:"small_order_surcharge"`
+	CartValue           int      `json:"cart_value"`
+	Delivery            Delivery `json:"delivery"`
+}
 
 func Haversine(lat1, lon1, lat2, lon2 float64) float64 {
 	// Convert degrees to radians
-	println(lat1, lon1, lat2, lon2)
 	lat1Rad := lat1 * math.Pi / 180
 	lon1Rad := lon1 * math.Pi / 180
 	lat2Rad := lat2 * math.Pi / 180
@@ -33,14 +46,38 @@ func Haversine(lat1, lon1, lat2, lon2 float64) float64 {
 	return distance
 } //stolen from internet
 
-func calculateDistance(clientLat float64, clientLon float64, venueCords []float64) error {
+func calculateDistance(clientLat float64, clientLon float64, venueCords []float64) int {
 	dist := Haversine(clientLat, clientLon, venueCords[1], venueCords[0]) //lat and lon changed somewhere
-	fmt.Printf("Distance: %.2f km\n", dist)
-	return nil
+	result := int(math.Round(dist))
+	fmt.Println(result) //debug
+	return result
 }
 
-func Placeholder(queries parser.Queries, venue venueapi.Venue) error {
-	calculateDistance(queries.UserLat, queries.UserLon, venue.Location)
+func calculateFee(ranges []venueapi.DistanceRange, baseFee int, delivery Delivery) int {
+	for _, bracket := range ranges {
+		if delivery.Distance >= bracket.Min && delivery.Distance < bracket.Max {
 
+			fee := baseFee + bracket.A
+			elementB := bracket.B * float64(delivery.Distance) / 10
+			fee = fee + int(math.Round(elementB))
+			delivery.Fee = fee
+			fmt.Printf("Distance %d is in the range [%d, %d]\n", delivery.Distance, bracket.Min, bracket.Max)
+			fmt.Println(delivery.Fee)
+			return (0)
+		} else if delivery.Distance > bracket.Min && bracket.Max == 0 {
+			return (1)
+		}
+	}
+	return (0)
+}
+
+func Placeholder(queries *parser.Queries, venue *venueapi.Venue) error {
+	var Order Order
+	Order.Delivery.Distance = calculateDistance(queries.UserLat, queries.UserLon, venue.Location)
+	if queries.CartValue < venue.SurchargeMin {
+		Order.SmallOrderSurcharge = venue.SurchargeMin - queries.CartValue
+	}
+	Order.Delivery.Distance = 600
+	calculateFee(venue.DistanceRanges, venue.BasePrice, Order.Delivery)
 	return nil
 }

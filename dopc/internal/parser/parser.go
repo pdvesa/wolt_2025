@@ -8,7 +8,11 @@ import (
 	"strconv"
 )
 
-type ReqError struct {
+type Parser interface {
+	ParseRequest(request *http.Request) *ParserError
+}
+
+type ParserError struct {
 	Status  int
 	Message string
 }
@@ -20,10 +24,10 @@ type Queries struct {
 	UserLon   float64
 }
 
-func parseNumericElement(queryList url.Values, queryName string, query interface{}) *ReqError {
+func parseNumericElement(queryList url.Values, queryName string, query interface{}) *ParserError {
 	conversionStr := queryList.Get(queryName)
 	if conversionStr == "" {
-		return &ReqError{
+		return &ParserError{
 			Status:  http.StatusBadRequest,
 			Message: fmt.Sprintf("Missing mandatory query '%s'", queryName),
 		}
@@ -33,7 +37,7 @@ func parseNumericElement(queryList url.Values, queryName string, query interface
 	case *int:
 		value, err := strconv.Atoi(conversionStr)
 		if err != nil {
-			return &ReqError{
+			return &ParserError{
 				Status:  http.StatusBadRequest,
 				Message: fmt.Sprintf("Invalid query in '%s': %v", queryName, err),
 			}
@@ -43,7 +47,7 @@ func parseNumericElement(queryList url.Values, queryName string, query interface
 	case *float32:
 		value, err := strconv.ParseFloat(conversionStr, 32)
 		if err != nil {
-			return &ReqError{
+			return &ParserError{
 				Status:  http.StatusBadRequest,
 				Message: fmt.Sprintf("Invalid query in '%s': %v", queryName, err),
 			}
@@ -53,10 +57,10 @@ func parseNumericElement(queryList url.Values, queryName string, query interface
 	case *float64:
 		value, err := strconv.ParseFloat(conversionStr, 64)
 		if err != nil {
-			return &ReqError{
+			return &ParserError{
 				Status:  http.StatusBadRequest,
 				Message: fmt.Sprintf("Invalid query in '%s': %v", queryName, err),
-			} //maybe print to terminal for debug
+			}
 		}
 		*target = value
 
@@ -66,34 +70,35 @@ func parseNumericElement(queryList url.Values, queryName string, query interface
 	return nil
 }
 
-func extraChecks(queries *Queries) *ReqError {
+func extraChecks(queries *Queries) *ParserError {
 	if queries.CartValue < 0 {
-		return &ReqError{
+		return &ParserError{
 			Status:  http.StatusBadRequest,
-			Message: "We can't pay for your order",
+			Message: "Query 'cart_value' negative",
 		}
 	}
 
 	if queries.UserLat <= -90 || queries.UserLat >= 90 {
-		return &ReqError{
+		return &ParserError{
 			Status:  http.StatusBadRequest,
-			Message: "Not from this planet",
+			Message: "Coordinates not from Earth",
 		}
 	}
 
 	if queries.UserLon <= -180 || queries.UserLon >= 180 {
-		return &ReqError{
+		return &ParserError{
 			Status:  http.StatusBadRequest,
-			Message: "Not from this planet",
+			Message: "Coordinates not from Earth",
 		}
 	}
 
 	return nil
 }
 
-func ParseRequest(request *http.Request, queries *Queries) *ReqError {
+func ParseRequest(request *http.Request) (*Queries, *ParserError) {
+	var queries Queries
 	if request.Method != http.MethodGet {
-		return &ReqError{
+		return nil, &ParserError{
 			Status:  http.StatusMethodNotAllowed,
 			Message: "",
 		}
@@ -101,7 +106,7 @@ func ParseRequest(request *http.Request, queries *Queries) *ReqError {
 
 	queryList := request.URL.Query()
 	if len(queryList) == 0 {
-		return &ReqError{
+		return nil, &ParserError{
 			Status:  http.StatusBadRequest,
 			Message: "Missing mandatory queries",
 		}
@@ -116,7 +121,7 @@ func ParseRequest(request *http.Request, queries *Queries) *ReqError {
 		//debug*/
 	queries.VenueSlug = queryList.Get("venue_slug")
 	if queries.VenueSlug == "" {
-		return &ReqError{
+		return nil, &ParserError{
 			Status:  http.StatusBadRequest,
 			Message: "Missing mandatory query 'venue_slug'",
 		}
@@ -124,23 +129,23 @@ func ParseRequest(request *http.Request, queries *Queries) *ReqError {
 
 	err := parseNumericElement(queryList, "cart_value", &queries.CartValue)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = parseNumericElement(queryList, "user_lat", &queries.UserLat)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = parseNumericElement(queryList, "user_lon", &queries.UserLon)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = extraChecks(queries)
+	err = extraChecks(&queries)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &queries, nil
 }

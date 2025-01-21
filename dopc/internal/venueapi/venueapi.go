@@ -6,9 +6,10 @@ import (
 	"net/http"
 )
 
-type ReqError struct {
+type ApiError struct {
 	Status  int
 	Message string
+	Debug   string
 }
 
 type DistanceRange struct {
@@ -52,29 +53,36 @@ type Venue struct {
 
 // refactor structs
 
-func getVenueData(url string, venue *Venue) *ReqError {
+type dataFetcher interface {
+	getVenueData(venueID string) *ApiError
+}
+
+func getVenueData(apiAddress string, venue *Venue) *ApiError {
 	var TempVenue TempVenue
-	response, err := http.Get(url)
+	response, err := http.Get(apiAddress)
 	if err != nil {
-		return &ReqError{
+		return &ApiError{
 			Status:  http.StatusInternalServerError,
-			Message: fmt.Sprintf("API fetch failed: %v", err),
+			Message: "",
+			Debug:   fmt.Sprintf("API fetch failed: %v", err),
 		}
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != 200 {
-		return &ReqError{
+		return &ApiError{
 			Status:  http.StatusBadRequest,
 			Message: fmt.Sprintf("Venue: %d %s", response.StatusCode, http.StatusText(response.StatusCode)),
+			Debug:   fmt.Sprintf("Venue: %d %s", response.StatusCode, http.StatusText(response.StatusCode)),
 		}
 	}
 
 	err = json.NewDecoder(response.Body).Decode(&TempVenue)
 	if err != nil {
-		return &ReqError{
+		return &ApiError{
 			Status:  http.StatusInternalServerError,
-			Message: fmt.Sprintf("JSON decoding failed: %v", err),
+			Message: "",
+			Debug:   fmt.Sprintf("JSON decoding failed: %v", err),
 		}
 	}
 
@@ -91,19 +99,20 @@ func getVenueData(url string, venue *Venue) *ReqError {
 	return nil
 }
 
-func ProcessVenue(venue string, venueData *Venue) *ReqError {
+func ProcessVenue(venue string) (*Venue, *ApiError) {
+	var venueData Venue
 	apiUrl := "https://consumer-api.development.dev.woltapi.com/home-assignment-api/v1/venues/"
 
 	url := apiUrl + venue + "/static"
-	err := getVenueData(url, venueData)
+	err := getVenueData(url, &venueData)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	url = apiUrl + venue + "/dynamic"
-	err = getVenueData(url, venueData)
+	err = getVenueData(url, &venueData)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	//debug
@@ -113,5 +122,5 @@ func ProcessVenue(venue string, venueData *Venue) *ReqError {
 	println(venueData.BasePrice)
 	println(venueData.DistanceRanges)
 
-	return nil
+	return &venueData, nil
 }
