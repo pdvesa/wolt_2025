@@ -15,6 +15,7 @@ type Parser interface {
 type ParserError struct {
 	Status  int
 	Message string
+	Debug   string
 }
 
 type Queries struct {
@@ -29,7 +30,7 @@ func parseNumericElement(queryList url.Values, queryName string, query interface
 	if conversionStr == "" {
 		return &ParserError{
 			Status:  http.StatusBadRequest,
-			Message: fmt.Sprintf("Missing mandatory query '%s'", queryName),
+			Message: fmt.Sprintf("missing mandatory query '%s'", queryName),
 		}
 	}
 
@@ -39,7 +40,7 @@ func parseNumericElement(queryList url.Values, queryName string, query interface
 		if err != nil {
 			return &ParserError{
 				Status:  http.StatusBadRequest,
-				Message: fmt.Sprintf("Invalid query in '%s': %v", queryName, err),
+				Message: fmt.Sprintf("invalid query in '%s': %v", queryName, err),
 			}
 		}
 		*target = value
@@ -49,7 +50,7 @@ func parseNumericElement(queryList url.Values, queryName string, query interface
 		if err != nil {
 			return &ParserError{
 				Status:  http.StatusBadRequest,
-				Message: fmt.Sprintf("Invalid query in '%s': %v", queryName, err),
+				Message: fmt.Sprintf("invalid query in '%s': %v", queryName, err),
 			}
 		}
 		*target = float32(value)
@@ -59,13 +60,13 @@ func parseNumericElement(queryList url.Values, queryName string, query interface
 		if err != nil {
 			return &ParserError{
 				Status:  http.StatusBadRequest,
-				Message: fmt.Sprintf("Invalid query in '%s': %v", queryName, err),
+				Message: fmt.Sprintf("invalid query in '%s': %v", queryName, err),
 			}
 		}
 		*target = value
 
 	default:
-		log.Println("Error: User error :)")
+		log.Println("error: User error :)")
 	}
 	return nil
 }
@@ -74,7 +75,7 @@ func extraChecks(queries *Queries) *ParserError {
 	if queries.CartValue < 0 {
 		return &ParserError{
 			Status:  http.StatusBadRequest,
-			Message: "Query 'cart_value' negative",
+			Message: "query 'cart_value' negative",
 		}
 	}
 
@@ -108,22 +109,15 @@ func ParseRequest(request *http.Request) (*Queries, *ParserError) {
 	if len(queryList) == 0 {
 		return nil, &ParserError{
 			Status:  http.StatusBadRequest,
-			Message: "Missing mandatory queries",
+			Message: "missing mandatory queries",
 		}
 	}
-	/*	// debug
-		for key, values := range queryList {
-			fmt.Println("Key:", key)
-			for _, value := range values {
-				fmt.Println("Value:", value)
-			}
-		}
-		//debug*/
+
 	queries.VenueSlug = queryList.Get("venue_slug")
 	if queries.VenueSlug == "" {
 		return nil, &ParserError{
 			Status:  http.StatusBadRequest,
-			Message: "Missing mandatory query 'venue_slug'",
+			Message: "missing mandatory query 'venue_slug'",
 		}
 	}
 

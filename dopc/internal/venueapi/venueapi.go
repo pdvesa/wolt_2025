@@ -64,16 +64,22 @@ func getVenueData(apiAddress string, venue *Venue) *ApiError {
 		return &ApiError{
 			Status:  http.StatusInternalServerError,
 			Message: "",
-			Debug:   fmt.Sprintf("API fetch failed: %v", err),
+			Debug:   fmt.Sprintf("api fetch failed: %v", err),
 		}
 	}
 	defer response.Body.Close()
 
-	if response.StatusCode != 200 {
+	if response.StatusCode == http.StatusNotFound {
 		return &ApiError{
 			Status:  http.StatusBadRequest,
-			Message: fmt.Sprintf("Venue: %d %s", response.StatusCode, http.StatusText(response.StatusCode)),
+			Message: "invalid 'venue_slug'",
 			Debug:   fmt.Sprintf("Venue: %d %s", response.StatusCode, http.StatusText(response.StatusCode)),
+		}
+	} else if response.StatusCode != 200 {
+		return &ApiError{
+			Status:  http.StatusInternalServerError,
+			Message: "",
+			Debug:   fmt.Sprintf("venue: %d %s", response.StatusCode, http.StatusText(response.StatusCode)),
 		}
 	}
 
@@ -82,15 +88,13 @@ func getVenueData(apiAddress string, venue *Venue) *ApiError {
 		return &ApiError{
 			Status:  http.StatusInternalServerError,
 			Message: "",
-			Debug:   fmt.Sprintf("JSON decoding failed: %v", err),
+			Debug:   fmt.Sprintf("json decoding failed: %v", err),
 		}
 	}
 
 	if venue.ID == "" {
 		venue.ID = TempVenue.VenueRaw.ID
-		println(TempVenue.VenueRaw.Location.Coordinates[0], TempVenue.VenueRaw.Location.Coordinates[1])
 		venue.Location = TempVenue.VenueRaw.Location.Coordinates
-		println(venue.Location[0], venue.Location[1]) // i dont like this
 	}
 	venue.SurchargeMin = TempVenue.VenueRaw.DeliverySpecs.OrderMinimumNoSurcharge
 	venue.BasePrice = TempVenue.VenueRaw.DeliverySpecs.DeliveryPricing.BasePrice

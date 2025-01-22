@@ -3,6 +3,7 @@ package calculator
 import (
 	"dopc/internal/parser"
 	"dopc/internal/venueapi"
+	"errors"
 	"fmt"
 	"math"
 )
@@ -16,7 +17,7 @@ type Delivery struct {
 }
 
 // Struct for the main data
-type Order struct {
+type OrderSummary struct {
 	TotalPrice          int      `json:"total_price"`
 	SmallOrderSurcharge int      `json:"small_order_surcharge"`
 	CartValue           int      `json:"cart_value"`
@@ -53,31 +54,37 @@ func calculateDistance(clientLat float64, clientLon float64, venueCords []float6
 	return result
 }
 
-func calculateFee(ranges []venueapi.DistanceRange, baseFee int, delivery Delivery) int {
+func calculateFee(ranges []venueapi.DistanceRange, baseFee int, distance int) (int, error) {
 	for _, bracket := range ranges {
-		if delivery.Distance >= bracket.Min && delivery.Distance < bracket.Max {
+		if distance >= bracket.Min && distance < bracket.Max {
 
 			fee := baseFee + bracket.A
-			elementB := bracket.B * float64(delivery.Distance) / 10
+			elementB := bracket.B * float64(distance) / 10
 			fee = fee + int(math.Round(elementB))
-			delivery.Fee = fee
-			fmt.Printf("Distance %d is in the range [%d, %d]\n", delivery.Distance, bracket.Min, bracket.Max)
-			fmt.Println(delivery.Fee)
-			return (0)
-		} else if delivery.Distance > bracket.Min && bracket.Max == 0 {
-			return (1)
+
+			fmt.Printf("Distance %d is in the range [%d, %d]\n", distance, bracket.Min, bracket.Max)
+			fmt.Println(fee)
+
+			return fee, nil
+		} else if distance > bracket.Min && bracket.Max == 0 {
+			return 0, errors.New("can't deliver to location")
 		}
 	}
-	return (0)
+	return 0, errors.New("something went wrong")
 }
 
-func Placeholder(queries *parser.Queries, venue *venueapi.Venue) error {
-	var Order Order
-	Order.Delivery.Distance = calculateDistance(queries.UserLat, queries.UserLon, venue.Location)
-	if queries.CartValue < venue.SurchargeMin {
-		Order.SmallOrderSurcharge = venue.SurchargeMin - queries.CartValue
+func Placeholder(queries *parser.Queries, venue *venueapi.Venue) (*OrderSummary, error) {
+	var summary OrderSummary
+	var err error
+	summary.CartValue = queries.CartValue
+	summary.Delivery.Distance = calculateDistance(queries.UserLat, queries.UserLon, venue.Location)
+	summary.Delivery.Fee, err = calculateFee(venue.DistanceRanges, venue.BasePrice, summary.Delivery.Distance)
+	if err != nil {
+		return nil, err
 	}
-	Order.Delivery.Distance = 600
-	calculateFee(venue.DistanceRanges, venue.BasePrice, Order.Delivery)
-	return nil
+	if summary.CartValue < venue.SurchargeMin {
+		summary.SmallOrderSurcharge = venue.SurchargeMin - summary.CartValue
+	}
+	summary.TotalPrice = summary.CartValue + summary.SmallOrderSurcharge + summary.Delivery.Fee
+	return &summary, nil
 }
