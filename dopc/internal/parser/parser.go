@@ -10,12 +10,11 @@ import (
 
 type Parser interface {
 	ParseRequest(request *http.Request) *ParserError
-}
+} // think
 
 type ParserError struct {
 	Status  int
 	Message string
-	Debug   string
 }
 
 type Queries struct {
@@ -25,7 +24,52 @@ type Queries struct {
 	UserLon   float64
 }
 
-func parseNumericElement(queryList url.Values, queryName string, query interface{}) *ParserError {
+func ParseRequest(request *http.Request) (*Queries, *ParserError) {
+	var queries Queries
+	if request.Method != http.MethodGet {
+		return nil, &ParserError{
+			Status:  http.StatusMethodNotAllowed,
+			Message: "",
+		}
+	}
+
+	queryList := request.URL.Query()
+	if len(queryList) == 0 {
+		return nil, &ParserError{
+			Status:  http.StatusBadRequest,
+			Message: "missing mandatory queries",
+		}
+	}
+
+	err := parseElement(queryList, "venue_slug", &queries.VenueSlug)
+	if err != nil {
+		return nil, err
+	}
+
+	err = parseElement(queryList, "cart_value", &queries.CartValue)
+	if err != nil {
+		return nil, err
+	}
+
+	err = parseElement(queryList, "user_lat", &queries.UserLat)
+	if err != nil {
+		return nil, err
+	}
+
+	err = parseElement(queryList, "user_lon", &queries.UserLon)
+	if err != nil {
+		return nil, err
+	}
+
+	err = extraChecks(&queries)
+	if err != nil {
+		return nil, err
+	}
+
+	return &queries, nil
+}
+
+func parseElement(queryList url.Values, queryName string, query interface{}) *ParserError {
 	conversionStr := queryList.Get(queryName)
 	if conversionStr == "" {
 		return &ParserError{
@@ -34,7 +78,9 @@ func parseNumericElement(queryList url.Values, queryName string, query interface
 		}
 	}
 
-	switch target := query.(type) {
+	switch queryType := query.(type) {
+	case *string:
+		*queryType = conversionStr
 	case *int:
 		value, err := strconv.Atoi(conversionStr)
 		if err != nil {
@@ -43,7 +89,7 @@ func parseNumericElement(queryList url.Values, queryName string, query interface
 				Message: fmt.Sprintf("invalid query in '%s': %v", queryName, err),
 			}
 		}
-		*target = value
+		*queryType = value
 
 	case *float32:
 		value, err := strconv.ParseFloat(conversionStr, 32)
@@ -53,7 +99,7 @@ func parseNumericElement(queryList url.Values, queryName string, query interface
 				Message: fmt.Sprintf("invalid query in '%s': %v", queryName, err),
 			}
 		}
-		*target = float32(value)
+		*queryType = float32(value)
 
 	case *float64:
 		value, err := strconv.ParseFloat(conversionStr, 64)
@@ -63,7 +109,7 @@ func parseNumericElement(queryList url.Values, queryName string, query interface
 				Message: fmt.Sprintf("invalid query in '%s': %v", queryName, err),
 			}
 		}
-		*target = value
+		*queryType = value
 
 	default:
 		log.Println("error: User error :)")
@@ -94,52 +140,4 @@ func extraChecks(queries *Queries) *ParserError {
 	}
 
 	return nil
-}
-
-func ParseRequest(request *http.Request) (*Queries, *ParserError) {
-	var queries Queries
-	if request.Method != http.MethodGet {
-		return nil, &ParserError{
-			Status:  http.StatusMethodNotAllowed,
-			Message: "",
-		}
-	}
-
-	queryList := request.URL.Query()
-	if len(queryList) == 0 {
-		return nil, &ParserError{
-			Status:  http.StatusBadRequest,
-			Message: "missing mandatory queries",
-		}
-	}
-
-	queries.VenueSlug = queryList.Get("venue_slug")
-	if queries.VenueSlug == "" {
-		return nil, &ParserError{
-			Status:  http.StatusBadRequest,
-			Message: "missing mandatory query 'venue_slug'",
-		}
-	}
-
-	err := parseNumericElement(queryList, "cart_value", &queries.CartValue)
-	if err != nil {
-		return nil, err
-	}
-
-	err = parseNumericElement(queryList, "user_lat", &queries.UserLat)
-	if err != nil {
-		return nil, err
-	}
-
-	err = parseNumericElement(queryList, "user_lon", &queries.UserLon)
-	if err != nil {
-		return nil, err
-	}
-
-	err = extraChecks(&queries)
-	if err != nil {
-		return nil, err
-	}
-
-	return &queries, nil
 }

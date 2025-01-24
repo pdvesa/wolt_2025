@@ -1,22 +1,18 @@
 package calculator
 
 import (
+	"dopc/internal/api"
 	"dopc/internal/parser"
-	"dopc/internal/venueapi"
 	"errors"
 	"fmt"
 	"math"
 )
 
-const EarthRadius float64 = 6371000.0
-
-// temp place for structs
 type Delivery struct {
 	Fee      int `json:"fee"`
 	Distance int `json:"distance"`
 }
 
-// Struct for the main data
 type OrderSummary struct {
 	TotalPrice          int      `json:"total_price"`
 	SmallOrderSurcharge int      `json:"small_order_surcharge"`
@@ -24,37 +20,54 @@ type OrderSummary struct {
 	Delivery            Delivery `json:"delivery"`
 }
 
-func Haversine(lat1, lon1, lat2, lon2 float64) float64 {
-	// Convert degrees to radians
+const EarthRadius float64 = 6371000.0
+
+func Calculator(queries *parser.Queries, venue *api.Venue) (*OrderSummary, error) {
+	var summary OrderSummary
+	var err error
+
+	summary.CartValue = queries.CartValue
+	summary.Delivery.Distance = calculateDistance(queries.UserLat, queries.UserLon, venue.Lat, venue.Lon)
+
+	summary.Delivery.Fee, err = calculateFee(venue.DistanceRanges, venue.BasePrice, summary.Delivery.Distance)
+	if err != nil {
+		return nil, err
+	}
+
+	if summary.CartValue < venue.SurchargeMin {
+		summary.SmallOrderSurcharge = venue.SurchargeMin - summary.CartValue
+	}
+	summary.TotalPrice = summary.CartValue + summary.SmallOrderSurcharge + summary.Delivery.Fee
+
+	return &summary, nil
+}
+
+func haversine(lat1, lon1, lat2, lon2 float64) float64 {
 	lat1Rad := lat1 * math.Pi / 180
 	lon1Rad := lon1 * math.Pi / 180
 	lat2Rad := lat2 * math.Pi / 180
 	lon2Rad := lon2 * math.Pi / 180
 
-	// Differences in coordinates
 	dlat := lat2Rad - lat1Rad
 	dlon := lon2Rad - lon1Rad
 
-	// Haversine formula
 	a := math.Sin(dlat/2)*math.Sin(dlat/2) +
 		math.Cos(lat1Rad)*math.Cos(lat2Rad)*
 			math.Sin(dlon/2)*math.Sin(dlon/2)
 	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
 
-	// Calculate the distance
 	distance := EarthRadius * c
 
 	return distance
 } //stolen from internet
 
-func calculateDistance(clientLat float64, clientLon float64, venueCords []float64) int {
-	dist := Haversine(clientLat, clientLon, venueCords[1], venueCords[0]) //lat and lon changed somewhere
+func calculateDistance(clientLat float64, clientLon float64, venueLat float64, venueLon float64) int {
+	dist := haversine(clientLat, clientLon, venueLat, venueLon) //lat and lon changed somewhere
 	result := int(math.Round(dist))
-	fmt.Println(result) //debug
 	return result
 }
 
-func calculateFee(ranges []venueapi.DistanceRange, baseFee int, distance int) (int, error) {
+func calculateFee(ranges []api.DistanceRange, baseFee int, distance int) (int, error) {
 	for _, bracket := range ranges {
 		if distance >= bracket.Min && distance < bracket.Max {
 
@@ -71,20 +84,4 @@ func calculateFee(ranges []venueapi.DistanceRange, baseFee int, distance int) (i
 		}
 	}
 	return 0, errors.New("something went wrong")
-}
-
-func Placeholder(queries *parser.Queries, venue *venueapi.Venue) (*OrderSummary, error) {
-	var summary OrderSummary
-	var err error
-	summary.CartValue = queries.CartValue
-	summary.Delivery.Distance = calculateDistance(queries.UserLat, queries.UserLon, venue.Location)
-	summary.Delivery.Fee, err = calculateFee(venue.DistanceRanges, venue.BasePrice, summary.Delivery.Distance)
-	if err != nil {
-		return nil, err
-	}
-	if summary.CartValue < venue.SurchargeMin {
-		summary.SmallOrderSurcharge = venue.SurchargeMin - summary.CartValue
-	}
-	summary.TotalPrice = summary.CartValue + summary.SmallOrderSurcharge + summary.Delivery.Fee
-	return &summary, nil
 }

@@ -1,15 +1,15 @@
-package controller
+package handler
 
 import (
+	"dopc/internal/api"
 	"dopc/internal/calculator"
 	"dopc/internal/parser"
-	"dopc/internal/venueapi"
 	"encoding/json"
 	"log"
 	"net/http"
 )
 
-func DopcController(writer http.ResponseWriter, request *http.Request) {
+func DopcHandler(writer http.ResponseWriter, request *http.Request) {
 	queries, pErr := parser.ParseRequest(request)
 	if pErr != nil {
 		log.Println(pErr.Message)
@@ -17,14 +17,15 @@ func DopcController(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	venueData, aErr := venueapi.ProcessVenue(queries.VenueSlug)
+	println(queries.VenueSlug)
+	venueData, aErr := api.ProcessVenue(queries.VenueSlug)
 	if aErr != nil {
 		log.Println(aErr.Debug)
 		sendError(writer, aErr.Message, aErr.Status)
 		return
 	}
 
-	summary, err := calculator.Placeholder(queries, venueData)
+	summary, err := calculator.Calculator(queries, venueData)
 	if err != nil {
 		log.Println(err)
 		sendError(writer, err.Error(), http.StatusBadRequest)
