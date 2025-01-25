@@ -17,7 +17,6 @@ func DopcHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	println(queries.VenueSlug)
 	venueData, aErr := api.ProcessVenue(queries.VenueSlug)
 	if aErr != nil {
 		log.Println(aErr.Debug)

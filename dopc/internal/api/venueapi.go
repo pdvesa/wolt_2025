@@ -52,12 +52,6 @@ type Venue struct {
 	DistanceRanges []DistanceRange
 }
 
-// refactor structs
-
-type dataFetcher interface {
-	getVenueData(venueID string) *ApiError
-}
-
 const apiAddress string = "https://consumer-api.development.dev.woltapi.com/home-assignment-api/v1/venues/"
 
 func ProcessVenue(venue string) (*Venue, *ApiError) {
@@ -65,13 +59,6 @@ func ProcessVenue(venue string) (*Venue, *ApiError) {
 	if err != nil {
 		return nil, err
 	}
-	//debug
-	println(venueData.ID)
-	println(venueData.Lat)
-	println(venueData.Lon)
-	println(venueData.SurchargeMin)
-	println(venueData.BasePrice)
-	println(venueData.DistanceRanges)
 
 	return venueData, nil
 }
@@ -115,7 +102,6 @@ func getVenueData(venueID string) (*Venue, *ApiError) {
 
 func getApiResponse(venue string, optional string) (*http.Response, *ApiError) {
 	url := apiAddress + venue + optional
-	println(url)
 	response, err := http.Get(url)
 
 	if err != nil {
@@ -145,9 +131,8 @@ func getApiResponse(venue string, optional string) (*http.Response, *ApiError) {
 	return response, nil
 }
 
-func decodeFields(response *http.Response, decodeStruct interface{}) *ApiError {
+func decodeFields(response *http.Response, decodeStruct interface{}) *ApiError { //mayeb not
 	err := json.NewDecoder(response.Body).Decode(decodeStruct)
-
 	if err != nil {
 		return &ApiError{
 			Status:  http.StatusInternalServerError,
