@@ -4,7 +4,6 @@ import (
 	"dopc/internal/api"
 	"dopc/internal/parser"
 	"errors"
-	"fmt"
 	"math"
 )
 
@@ -20,14 +19,24 @@ type OrderSummary struct {
 	Delivery            Delivery `json:"delivery"`
 }
 
-const EarthRadius float64 = 6371000.0
+type DistanceCalculator interface {
+	CalculateDistance(clientLat, clientLon, venueLat, venueLon float64) int
+}
 
-func Calculator(queries *parser.Queries, venue *api.Venue) (*OrderSummary, error) {
+type HaversineCalculator struct{}
+
+func (h *HaversineCalculator) CalculateDistance(clientLat, clientLon, venueLat, venueLon float64) int {
+	dist := haversineFormula(clientLat, clientLon, venueLat, venueLon)
+	result := int(math.Round(dist))
+	return result
+}
+
+func Calculator(queries *parser.Queries, venue *api.Venue, distCalculator DistanceCalculator) (*OrderSummary, error) {
 	var summary OrderSummary
 	var err error
 
 	summary.CartValue = queries.CartValue
-	summary.Delivery.Distance = calculateDistance(queries.UserLat, queries.UserLon, venue.Lat, venue.Lon)
+	summary.Delivery.Distance = distCalculator.CalculateDistance(queries.UserLat, queries.UserLon, venue.Lat, venue.Lon)
 
 	summary.Delivery.Fee, err = calculateFee(venue.DistanceRanges, venue.BasePrice, summary.Delivery.Distance)
 	if err != nil {
@@ -42,7 +51,9 @@ func Calculator(queries *parser.Queries, venue *api.Venue) (*OrderSummary, error
 	return &summary, nil
 }
 
-func haversine(lat1, lon1, lat2, lon2 float64) float64 {
+func haversineFormula(lat1, lon1, lat2, lon2 float64) float64 {
+	EarthRadius := 6371000.0
+
 	lat1Rad := lat1 * math.Pi / 180
 	lon1Rad := lon1 * math.Pi / 180
 	lat2Rad := lat2 * math.Pi / 180
@@ -59,13 +70,7 @@ func haversine(lat1, lon1, lat2, lon2 float64) float64 {
 	distance := EarthRadius * c
 
 	return distance
-} //stolen from internet
-
-func calculateDistance(clientLat float64, clientLon float64, venueLat float64, venueLon float64) int {
-	dist := haversine(clientLat, clientLon, venueLat, venueLon) //lat and lon changed somewhere
-	result := int(math.Round(dist))
-	return result
-}
+} //function loaned from internet
 
 func calculateFee(ranges []api.DistanceRange, baseFee int, distance int) (int, error) {
 	for _, bracket := range ranges {
@@ -75,11 +80,8 @@ func calculateFee(ranges []api.DistanceRange, baseFee int, distance int) (int, e
 			elementB := bracket.B * float64(distance) / 10
 			fee = fee + int(math.Round(elementB))
 
-			fmt.Printf("Distance %d is in the range [%d, %d]\n", distance, bracket.Min, bracket.Max)
-			fmt.Println(fee)
-
 			return fee, nil
-		} else if distance > bracket.Min && bracket.Max == 0 {
+		} else if distance >= bracket.Min && bracket.Max == 0 {
 			return 0, errors.New("can't deliver to location")
 		}
 	}

@@ -52,10 +52,8 @@ type Venue struct {
 	DistanceRanges []DistanceRange
 }
 
-const apiAddress string = "https://consumer-api.development.dev.woltapi.com/home-assignment-api/v1/venues/"
-
-func ProcessVenue(venue string) (*Venue, *ApiError) {
-	venueData, err := getVenueData(venue)
+func ProcessVenue(venue string, apiAddress string) (*Venue, *ApiError) {
+	venueData, err := getVenueData(venue, apiAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -63,11 +61,11 @@ func ProcessVenue(venue string) (*Venue, *ApiError) {
 	return venueData, nil
 }
 
-func getVenueData(venueID string) (*Venue, *ApiError) {
+func getVenueData(venueID string, apiAddress string) (*Venue, *ApiError) {
 	var tempVenue DecodeVenue
 	var venueData Venue
 
-	response, err := getApiResponse(venueID, "/static")
+	response, err := getApiResponse(venueID, apiAddress, "/static")
 	if err != nil {
 		return nil, err
 	}
@@ -80,9 +78,9 @@ func getVenueData(venueID string) (*Venue, *ApiError) {
 
 	venueData.ID = tempVenue.VenueRaw.ID
 	venueData.Lon = tempVenue.VenueRaw.Location.Coordinates[0]
-	venueData.Lat = tempVenue.VenueRaw.Location.Coordinates[1] //doublecheck
+	venueData.Lat = tempVenue.VenueRaw.Location.Coordinates[1]
 
-	response, err = getApiResponse(venueID, "/dynamic")
+	response, err = getApiResponse(venueID, apiAddress, "/dynamic")
 	if err != nil {
 		return nil, err
 	}
@@ -100,8 +98,8 @@ func getVenueData(venueID string) (*Venue, *ApiError) {
 	return &venueData, nil
 }
 
-func getApiResponse(venue string, optional string) (*http.Response, *ApiError) {
-	url := apiAddress + venue + optional
+func getApiResponse(venue string, apiAddress string, endpoint string) (*http.Response, *ApiError) {
+	url := apiAddress + venue + endpoint
 	response, err := http.Get(url)
 
 	if err != nil {
@@ -117,7 +115,7 @@ func getApiResponse(venue string, optional string) (*http.Response, *ApiError) {
 		return nil, &ApiError{
 			Status:  http.StatusBadRequest,
 			Message: "invalid 'venue_slug'",
-			Debug:   fmt.Sprintf("Venue: %d %s", response.StatusCode, http.StatusText(response.StatusCode)),
+			Debug:   fmt.Sprintf("venue: %d %s", response.StatusCode, http.StatusText(response.StatusCode)),
 		}
 	} else if response.StatusCode != 200 {
 		response.Body.Close()
@@ -131,7 +129,7 @@ func getApiResponse(venue string, optional string) (*http.Response, *ApiError) {
 	return response, nil
 }
 
-func decodeFields(response *http.Response, decodeStruct interface{}) *ApiError { //mayeb not
+func decodeFields(response *http.Response, decodeStruct interface{}) *ApiError {
 	err := json.NewDecoder(response.Body).Decode(decodeStruct)
 	if err != nil {
 		return &ApiError{

@@ -17,14 +17,16 @@ func DopcHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	venueData, aErr := api.ProcessVenue(queries.VenueSlug)
+	venueData, aErr := api.ProcessVenue(queries.VenueSlug,
+		"https://consumer-api.development.dev.woltapi.com/home-assignment-api/v1/venues/")
 	if aErr != nil {
 		log.Println(aErr.Debug)
 		sendError(writer, aErr.Message, aErr.Status)
 		return
 	}
 
-	summary, err := calculator.Calculator(queries, venueData)
+	distanceCalculator := &calculator.HaversineCalculator{}
+	summary, err := calculator.Calculator(queries, venueData, distanceCalculator)
 	if err != nil {
 		log.Println(err)
 		sendError(writer, err.Error(), http.StatusBadRequest)
