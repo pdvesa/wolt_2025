@@ -12,7 +12,6 @@ import (
 func DopcHandler(writer http.ResponseWriter, request *http.Request) {
 	queries, pErr := parser.ParseRequest(request)
 	if pErr != nil {
-		log.Println(pErr.Message)
 		sendError(writer, pErr.Message, pErr.Status)
 		return
 	}
@@ -28,7 +27,6 @@ func DopcHandler(writer http.ResponseWriter, request *http.Request) {
 	distanceCalculator := &calculator.HaversineCalculator{}
 	summary, err := calculator.Calculator(queries, venueData, distanceCalculator)
 	if err != nil {
-		log.Println(err)
 		sendError(writer, err.Error(), http.StatusBadRequest)
 		return
 	}

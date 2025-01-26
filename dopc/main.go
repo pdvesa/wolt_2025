@@ -1,7 +1,7 @@
 package main
 
 import (
-	"dopc/internal/handler"
+	"dopc/handler"
 	"fmt"
 	"log"
 	"net/http"

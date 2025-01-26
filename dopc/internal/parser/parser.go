@@ -102,7 +102,7 @@ func parseElement(queryList url.Values, queryName string, query interface{}, man
 		*queryType = value
 
 	default:
-		log.Println("error: User error :)")
+		log.Println("data conversion not implemented")
 	}
 	return nil
 }

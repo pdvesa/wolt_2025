@@ -82,7 +82,7 @@ func calculateFee(ranges []api.DistanceRange, baseFee int, distance int) (int, e
 
 			return fee, nil
 		} else if distance >= bracket.Min && bracket.Max == 0 {
-			return 0, errors.New("can't deliver to location")
+			return 0, errors.New("location out of delivery range")
 		}
 	}
 	return 0, errors.New("something went wrong")

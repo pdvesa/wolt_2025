@@ -110,7 +110,7 @@ func TestCalculator(t *testing.T) {
 			expectedTotalPrice:  0,
 			expectedSurcharge:   0,
 			expectedDeliveryFee: 0,
-			expectedErrorMsg:    "can't deliver to location",
+			expectedErrorMsg:    "location out of delivery range",
 		},
 	}
 
