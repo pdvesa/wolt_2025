@@ -1,5 +1,11 @@
 package calculator
 
+/*
+
+Package for calculating the delivery distance and pricing.
+
+*/
+
 import (
 	"dopc/internal/api"
 	"dopc/internal/parser"
@@ -25,12 +31,13 @@ type DistanceCalculator interface {
 
 type HaversineCalculator struct{}
 
-func (h *HaversineCalculator) CalculateDistance(clientLat, clientLon, venueLat, venueLon float64) int {
+func (haversine *HaversineCalculator) CalculateDistance(clientLat, clientLon, venueLat, venueLon float64) int {
 	dist := haversineFormula(clientLat, clientLon, venueLat, venueLon)
 	result := int(math.Round(dist))
 	return result
 }
 
+// takes interface for the distance calculator to make mocking distances easier
 func Calculator(queries *parser.Queries, venue *api.Venue, distCalculator DistanceCalculator) (*OrderSummary, error) {
 	var summary OrderSummary
 	var err error
@@ -51,6 +58,7 @@ func Calculator(queries *parser.Queries, venue *api.Venue, distCalculator Distan
 	return &summary, nil
 }
 
+// this function was taken from the internet to calculate distance between coordinate pairs
 func haversineFormula(lat1, lon1, lat2, lon2 float64) float64 {
 	EarthRadius := 6371000.0
 
@@ -70,7 +78,7 @@ func haversineFormula(lat1, lon1, lat2, lon2 float64) float64 {
 	distance := EarthRadius * c
 
 	return distance
-} //function loaned from internet
+}
 
 func calculateFee(ranges []api.DistanceRange, baseFee int, distance int) (int, error) {
 	for _, bracket := range ranges {

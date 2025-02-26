@@ -1,5 +1,11 @@
 package parser
 
+/*
+
+This package is responsible for converting and validating query parameters.
+
+*/
+
 import (
 	"fmt"
 	"log"

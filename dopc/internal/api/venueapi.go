@@ -1,5 +1,11 @@
 package api
 
+/*
+
+Package responsible for fetching and saving data from the home-assignment API
+
+*/
+
 import (
 	"encoding/json"
 	"fmt"
