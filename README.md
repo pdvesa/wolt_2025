@@ -1,7 +1,7 @@
-after unpacking this project go to the dopc root
+after unpacking this project go to the dopc root  
 to launch the program run: go mod tidy && go run main.go
 
-to use unit tests from all internal packages run: go test ./... 
+to use unit tests from all internal packages run: go test ./...  
 unit tests were written with the help of generative AI
 
 to test the whole program with curl for example:
